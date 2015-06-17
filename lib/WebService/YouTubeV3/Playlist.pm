@@ -130,7 +130,12 @@ sub insert_video
 
 	if (!ref($v))
 		{
-		$v = $self->spawn('Video')->fetch($v);
+		my $video_id = $v;
+		$v = $self->spawn('Video');
+		if (! $v->fetch($video_id, 'id'))
+			{
+			return 0;
+			}
 		}
 
 	my $pli = $self->spawn('PlaylistItem');

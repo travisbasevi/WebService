@@ -56,6 +56,7 @@ sub _init
 		{
 		$self->{_config}->{useragent} = LWP::UserAgent->new;
 		$self->{_config}->{useragent}->agent("$0/0.1 " . $self->{_config}->{useragent}->agent);
+		$self->{_config}->{useragent}->timeout(30);
 		}
 
 	$self->{_config}->{oauth} ||= WebService::YouTubeV3::OAuth->new(%{$self->{_config}});
@@ -97,9 +98,16 @@ sub fetch
 	my ($id, $part) = @_;
 
 	my @list = $self->list($part, {'id' => $id}, {'maxResults' => 1}, 1);
-	$self->{_get} = $list[0]->{_get};
-
-	return $self;
+	if (@list)
+		{
+		$self->{_get} = $list[0]->{_get};
+		return 1;
+		}
+	else
+		{
+		$self->{_get} = undef;
+		return 0;
+		}
 	}
 
 sub list
@@ -182,6 +190,7 @@ sub insert
 		}
 	else
 		{
+		$self->{_get} = undef;
 		return 0;
 		}
 	}
@@ -210,6 +219,7 @@ sub update
 		}
 	else
 		{
+		$self->{_get} = undef;
 		return 0;
 		}
 	}
@@ -364,7 +374,7 @@ sub fetch_doc
 	my $self = shift;
 	my ($uri, $method, $body) = @_;
 
-	foreach my $try ('access', 'refresh')
+	foreach my $try (1..5)
 		{
 		my $req = HTTP::Request->new($method => $uri->as_string);
 		$req->header('Authorization' => $self->oauth->{access_token_hash}->{token_type} . ' ' . $self->oauth->{access_token_hash}->{access_token});
@@ -375,25 +385,45 @@ sub fetch_doc
 			$req->content(Encode::encode_utf8($json));
 			}
 		$self->{_last_url} = $uri->as_string;
+		$self->{_last_etag} = undef;
 		$self->log($method . " " . $uri->as_string);
 		#print $req->dump;
 
 		my $r = $self->useragent->request($req);
 		if ($r->is_success)
 			{
-			print $r->content;
-			return $self->json->decode($r->content);
+			#print $r->content;
+			my $ref;
+			if (eval { $ref = $self->json->decode($r->content) })
+				{
+				$self->{_last_etag} = $ref->{etag};
+				return $ref;
+				}
+			elsif ($try < 5)
+				{
+				carp "JSON DECODE FAILURE (try $try/5): " . join("; ", $@);
+				sleep 10;
+				}
+			else
+				{
+				croak "JSON DECODE FAILURE (exit): " . join("; ", $@);
+				}
 			}
-		elsif ($r->code == 401 && $try eq 'access' && $self->oauth->{access_token_hash}->{refresh_token})
+		elsif ($try == 1 && $r->code == 401 && $self->oauth->{access_token_hash}->{refresh_token})
 			{
 			$self->log("attempting token refresh");
 			$self->oauth->refresh_access_token;
 			}
+		elsif ($try < 5)
+			{
+			carp "$method FAILURE (try $try/5): error" . $r->code . ": " . $r->message;
+			sleep 10;
+			}
 		else
 			{
-			$self->log("*** $method FAILURE: " . $r->code . ": " . $r->message);
-			print $r->content;
-			return 0;
+			croak "$method FAILURE (exit): error" . $r->code . ": " . $r->message;
+			#print $r->content;
+			#return 0;
 			}
 		}
 	}
@@ -414,12 +444,14 @@ sub make_request
 			$req->content(Encode::encode_utf8($json));
 			}
 		$self->{_last_url} = $uri->as_string;
+		$self->{_last_etag} = undef;
 		$self->log($method . " " . $uri->as_string);
 		#print $req->dump;
 
 		my $r = $self->useragent->request($req);
 		if ($r->code == 204)
 			{
+			$self->{_last_etag} = 0;
 			return 1;
 			}
 		elsif ($r->code == 401 && $try eq 'access' && $self->oauth->{access_token_hash}->{refresh_token})
@@ -429,9 +461,7 @@ sub make_request
 			}
 		else
 			{
-			$self->log("*** $method FAILURE: " . $r->code . ": " . $r->message);
-			print $r->content;
-			return 0;
+			croak "$method FAILURE: error" . $r->code . ": " . $r->message;
 			}
 		}
 	}

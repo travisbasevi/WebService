@@ -104,9 +104,9 @@ sub duration_in_seconds
 	my $self = shift;
 
 	my $duration = $self->contentDetails_duration;
-	if ($duration =~ /^PT((\d+)H)?((\d+)M)?(\d+)S$/)
+	if ($duration =~ /^PT((\d+)H)?((\d+)M)?((\d+)S)?$/)
 		{
-		return 3600*($2 || 0) + 60*($4 || 0) + $5;
+		return 3600*($2 || 0) + 60*($4 || 0) + ($6 || 0);
 		}
 	else
 		{

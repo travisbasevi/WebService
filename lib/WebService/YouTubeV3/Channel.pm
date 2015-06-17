@@ -64,9 +64,16 @@ sub fetch_by_name
 	my ($name, $part) = @_;
 
 	my @list = $self->list($part, {'forUsername' => $name}, {'maxResults' => 1}, 1);
-	$self->{_get} = $list[0]->{_get};
-
-	return $self;
+	if (@list)
+		{
+		$self->{_get} = $list[0]->{_get};
+		return 1;
+		}
+	else
+		{
+		$self->{_get} = undef;
+		return 0;
+		}
 	}
 
 =head2 list
