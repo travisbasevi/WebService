@@ -25,7 +25,7 @@ $config{client_secrets_file} = '/data/videodb/google_client_secrets.json';
 $config{access_token_file} = '/data/videodb/google_access_token.json';
 my $ytv = WebService::YouTubeV3::Video->new(%config);
 #print Dumper($ytv);
-$ytv->fetch('1lAZdQ7NxV8');
+$ytv->fetch('kK_1h7gGZ0U', ['snippet', 'contentDetails']);
 print Dumper($ytv);
 
 exit;

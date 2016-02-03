@@ -97,7 +97,7 @@ sub fetch
 	my $self = shift;
 	my ($id, $part) = @_;
 
-	my @list = $self->list($part, {'id' => $id}, {'maxResults' => 1}, 1);
+	my @list = $self->list($part, {'id' => $id}, undef, 1);
 	if (@list)
 		{
 		$self->{_get} = $list[0]->{_get};
@@ -118,8 +118,13 @@ sub list
 	$part ||= $self->{get_default};
 	$filter ||= {};
 	$opt ||= {};
-	$opt->{maxResults} ||= 50;
 	$limit = defined($limit) ? $limit : 50;
+
+	$opt->{maxResults} ||= 50;
+	if ($opt->{maxResults} > $limit)
+		{
+		$opt->{maxResults} = $limit;
+		}
 
 	my $uri = URI->new($self->{url_base});
 	$uri->query_param('part', ref($part) eq "ARRAY" ? join(',', @{$part}) : $part);
@@ -280,6 +285,29 @@ sub _sub_get_all
 			$get->{$p} = $hash->{$k};
 			}
 		}
+	}
+
+sub check_value
+	{
+	my $self = shift;
+	my $name = shift;
+
+	my $ok = 1;
+	my $h = $self->{_get};
+	foreach my $w (split(/_/, $name))
+		{
+		if (ref($h) eq 'HASH' && exists $h->{$w})
+			{
+			$h = $h->{$w};
+			}
+		else
+			{
+			$ok = 0;
+			last;
+			}
+		}
+
+	return $ok;
 	}
 
 sub get_value

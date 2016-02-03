@@ -83,7 +83,7 @@ sub list_related
 
 	my $yts = $self->spawn('Search');
 	my @ids = ();
-	foreach my $s ( $yts->list(undef, {'relatedToVideoId' => $self->id}, {'order' => 'date', 'type' => 'video'}, $limit) )
+	foreach my $s ( $yts->list(undef, {'relatedToVideoId' => $self->id}, {'type' => 'video'}, $limit) )
 		{
 		push(@ids, $s->id_videoId);
 		}
@@ -98,6 +98,28 @@ Returns a list of videos
 @videos = $yt->list(\@part, \%filter, \%optional, $limit);
 
 =cut
+
+sub relatedVideoId
+	{
+	my $self = shift;
+	my ($limit) = @_;
+
+	my $yts = $self->spawn('Search');
+	my @ids = ();
+	foreach my $s ( $yts->list(undef, {'relatedToVideoId' => $self->id}, {'type' => 'video'}, $limit) )
+		{
+		push(@ids, $s->id_videoId);
+		}
+
+	return @ids;
+	}
+
+sub contentDetails_regionRestriction
+	{
+	# this does not reliably appear - especially for removed videos/accounts
+	my $self = shift;
+	return $self->check_value('contentDetails_regionRestriction') ? $self->get_value('contentDetails_regionRestriction') : {};
+	}
 
 sub duration_in_seconds
 	{
@@ -129,6 +151,27 @@ sub publishedat_iso9075
 		}
 	}
 
+sub tags_as_keywords
+	{
+	my $self = shift;
+
+	if ($self->{_get}->{snippet} && $self->{_get}->{snippet}->{tags}) # doesn't exist for every video
+		{
+		my $tags = $self->snippet_tags;
+		if ($tags && ref($tags) eq "ARRAY")
+			{
+			return join(", ", @{$tags});
+			}
+		else
+			{
+			return "";
+			}
+		}
+	else
+		{
+		return "";
+		}
+	}
 
 =head1 AUTHOR
 

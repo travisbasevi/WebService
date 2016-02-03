@@ -64,11 +64,11 @@ sub list_by_channel
 	my ($name, $part, $limit) = @_;
 
 	my $ytc = $self->spawn('Channel');
-	my $channel = $ytc->fetch_by_name($name, 'id');
+	$ytc->fetch_by_name($name, 'id');
 
 	my $yts = $self->spawn('Search');
 	my @ids = ();
-	foreach my $s ( $yts->list(undef, undef, {'channelId' => $channel->id, 'order' => 'date', 'type' => 'playlist'}, $limit) )
+	foreach my $s ( $yts->list(undef, undef, {'channelId' => $ytc->id, 'order' => 'date', 'type' => 'playlist'}, $limit) )
 		{
 		push(@ids, $s->id_playlistId);
 		}
