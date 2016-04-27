@@ -121,7 +121,7 @@ sub list
 	$limit = defined($limit) ? $limit : 50;
 
 	$opt->{maxResults} ||= 50;
-	if ($opt->{maxResults} > $limit)
+	if ($limit && $opt->{maxResults} > $limit)
 		{
 		$opt->{maxResults} = $limit;
 		}
@@ -442,16 +442,39 @@ sub fetch_doc
 			$self->log("attempting token refresh");
 			$self->oauth->refresh_access_token;
 			}
-		elsif ($try < 5)
-			{
-			carp "$method FAILURE (try $try/5): error" . $r->code . ": " . $r->message;
-			sleep 10;
-			}
 		else
 			{
-			croak "$method FAILURE (exit): error" . $r->code . ": " . $r->message;
-			#print $r->content;
-			#return 0;
+			my $reason = "";
+			if ($r->content)
+				{
+				my $ref;
+				if (eval { $ref = $self->json->decode($r->content) })
+					{
+					foreach my $e (@{$ref->{error}->{errors}})
+						{
+						$reason .= $reason ? ", " : "";
+						$reason .= $e->{domain} . ": " . $e->{reason};
+						}
+					}
+				else
+					{
+					$reason = $r->content;
+					}
+				}
+
+			if ($try < 5)
+				{
+				carp "$method FAILURE (try $try/5): error " . $r->code . " (" . $r->message . ") " . $reason;
+				sleep 10;
+				}
+			elsif ($r->code == 403)
+				{
+				carp "$method FAILURE (ignore): error " . $r->code . " (" . $r->message . ") " . $reason;
+				}
+			else
+				{
+				croak "$method FAILURE (exit): error " . $r->code . " (" . $r->message . ") " . $reason;
+				}
 			}
 		}
 	}
