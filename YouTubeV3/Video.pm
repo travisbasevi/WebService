@@ -275,9 +275,17 @@ sub _none2undef
 
 =head1 AUTHOR
 
-
-
 Travis Basevi, C<< <travisb at cpan.org> >>
+
+=head1 QUICK SYNC
+
+rsync -avz /home/travis/lib/WebService coyote:/home/travis/lib/ --dry-run
+
+cd /home/travis/lib/WebService
+git add .; git commit; git push
+
+cd /home/travis/lib/WebService
+git pull
 
 =head1 BUGS
 
